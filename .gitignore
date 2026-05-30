@@ -1,0 +1,11 @@
+node_modules
+.env
+.env.local
+dist
+.next
+.vercel
+.turbo
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+.DS_Store
