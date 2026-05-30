@@ -1,0 +1,22 @@
+{
+  "name": "lightnode-model-registry-read",
+  "version": "0.1.0",
+  "description": "Read the AIVMModelRegistry + BenchmarkRegistry on-chain using lightnode-sdk's OnchainModelRegistry class.",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "start": "tsx index.ts"
+  },
+  "dependencies": {
+    "lightnode-sdk": "^0.5.1",
+    "viem": "^2.21.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
