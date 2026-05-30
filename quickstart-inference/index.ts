@@ -2,13 +2,14 @@
  * End-to-end encrypted LightChain AI inference, in ~30 lines, using
  * `runInferenceWithKey()` - the SDK's key-in / answer-out shortcut.
  *
- *   npm install
- *   npm start               # auto-generates a testnet key the first run,
- *                           # prints the address + faucet link, then exits.
- *                           # fund the address, run again, and the prompt fires.
+ * Three ways to run:
  *
- * The same flow + same proof chain (createSession, submitJob, jobCompleted)
- * that drives the live playground at https://lightnode.app/playground.
+ *   npm start                       # uses .env's PRIVATE_KEY (or auto-generates)
+ *   npm start --key 0x...           # one-shot, no .env edit needed
+ *   PRIVATE_KEY=0x... npm start     # also works (npm forwards env)
+ *
+ * Same proof chain (createSession, submitJob, jobCompleted) as the live
+ * playground at https://lightnode.app/playground.
  */
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import WS from "ws";
@@ -18,7 +19,21 @@ import { runInferenceWithKey, isStalledWorker, LightNode, SDK_VERSION, type Netw
 
 const NETWORK = (process.env.NETWORK ?? "testnet") as NetworkId;
 const MODEL = process.env.MODEL ?? "llama3-8b";
-const PROMPT = process.argv.slice(2).join(" ").trim() || "Reply with a one-sentence fun fact about the ocean.";
+
+// `npm start --key 0x...` and `npm start "your prompt"` are both supported.
+// The `--key` flag is consumed and removed; whatever is left becomes the prompt.
+const rawArgs = process.argv.slice(2);
+const argv: string[] = [];
+let keyFromFlag: string | undefined;
+for (let i = 0; i < rawArgs.length; i++) {
+  if (rawArgs[i] === "--key" && rawArgs[i + 1]) {
+    keyFromFlag = rawArgs[i + 1];
+    i++;
+  } else {
+    argv.push(rawArgs[i]);
+  }
+}
+const PROMPT = argv.join(" ").trim() || "Reply with a one-sentence fun fact about the ocean.";
 
 // Auto-load .env (no dotenv dep). `npm start` in StackBlitz / Codespaces
 // doesn't source .env via the shell, so without this PRIVATE_KEY would always
@@ -30,13 +45,25 @@ if (existsSync(".env")) {
   }
 }
 
-// If no key is set, generate ONE fresh key, write it to .env, print the
-// funding instructions, exit. Next `npm start` reuses it. This turns the cold
-// StackBlitz / Codespaces path from "errors out, no idea what to do" into
-// "tells you exactly which address to fund + where the faucet is."
-let PRIVATE_KEY = process.env.PRIVATE_KEY as `0x${string}` | undefined;
+// True when the runtime is StackBlitz / Bolt / a Node-in-browser shim. Used to
+// tailor the banners: in WebContainer the workspace is ephemeral and the
+// faucet is rate-limited per IP, so "auto-generate a fresh key every run"
+// is a UX trap. Warn loudly and steer the operator toward paste-your-own-key.
+const IN_WEBCONTAINER =
+  !!(globalThis as { process?: { versions?: Record<string, string> } }).process?.versions?.webcontainer ||
+  /StackBlitz|webcontainer/i.test(process.env.SHELL ?? "") ||
+  /stackblitz/i.test(process.env.HOSTNAME ?? "");
+
+// Priority order for the working private key: --key flag, env var, .env file.
+let PRIVATE_KEY = (keyFromFlag ?? process.env.PRIVATE_KEY) as `0x${string}` | undefined;
 const looksValid = PRIVATE_KEY?.startsWith("0x") && PRIVATE_KEY.length === 66 && !/^0x0+$/i.test(PRIVATE_KEY);
+
 if (!looksValid) {
+  // Auto-generate path. In StackBlitz this is a UX trap because the workspace
+  // is ephemeral and lightfaucet.ai is 2 LCAI per IP per day, so a freshly
+  // generated key may not be fundable. We still generate one (so the example
+  // is runnable for someone who has spare faucet quota), but loudly point at
+  // the better path.
   const fresh = generatePrivateKey();
   const addr = privateKeyToAccount(fresh).address;
   const lines = existsSync(".env") ? readFileSync(".env", "utf8").split("\n") : [];
@@ -44,14 +71,39 @@ if (!looksValid) {
   filtered.push(`PRIVATE_KEY=${fresh}`);
   writeFileSync(".env", filtered.join("\n").replace(/\n+$/, "") + "\n");
   console.log("");
-  console.log("  No PRIVATE_KEY was set, so a fresh testnet key was generated and");
-  console.log("  written to .env. To run this example you need to fund it once:");
+  console.log("=".repeat(72));
+  console.log("  No PRIVATE_KEY was set. A fresh testnet key was generated:");
   console.log("");
-  console.log(`    Address: ${addr}`);
-  console.log("    Faucet:  https://lightfaucet.ai   (paste the address, get free testnet LCAI)");
+  console.log(`    Address:     ${addr}`);
+  console.log(`    Private key: ${fresh}`);
   console.log("");
-  console.log("  Then run `npm start` again. The .env file is gitignored - the key");
-  console.log("  stays local to this workspace. (To use your own key instead, edit .env.)");
+  if (IN_WEBCONTAINER) {
+    console.log("  IMPORTANT - you are running in StackBlitz / a cloud IDE:");
+    console.log("");
+    console.log("  - The faucet at https://lightfaucet.ai is rate-limited to about");
+    console.log("    2 LCAI per IP per day. If you have already requested today,");
+    console.log("    funding this fresh address may fail.");
+    console.log("  - This workspace is ephemeral. When you close this tab the");
+    console.log("    private key above is GONE, and any LCAI you funded is");
+    console.log("    stranded (no real loss on testnet, but the demo will keep");
+    console.log("    asking you to re-fund).");
+    console.log("");
+    console.log("  Recommended: COPY the private key above, save it locally, and");
+    console.log("  pass it on the next run instead of letting a new one generate:");
+    console.log("");
+    console.log("      npm start --key 0x...");
+    console.log("");
+    console.log("  Or paste it into the .env file on the left so this workspace");
+    console.log("  reuses it across runs.");
+  } else {
+    console.log("  To fund and run:");
+    console.log("    1. Open https://lightfaucet.ai");
+    console.log("    2. Paste the address above and request free testnet LCAI");
+    console.log("    3. Run `npm start` again");
+    console.log("");
+    console.log("  .env is gitignored. The key persists on this disk across runs.");
+  }
+  console.log("=".repeat(72));
   console.log("");
   process.exit(0);
 }
@@ -65,8 +117,16 @@ console.log(`> lightnode-sdk v${SDK_VERSION} network=${NETWORK} ${account.addres
 if (balance < parseEther("0.05")) {
   console.error("");
   console.error(`  Wallet ${account.address} has too little LCAI to run one job (need ~0.05).`);
-  if (NETWORK === "testnet") console.error(`  Get free testnet LCAI: https://lightfaucet.ai`);
-  else console.error(`  Top up the address on mainnet (chain ${ln.network.chainId}).`);
+  if (NETWORK === "testnet") {
+    console.error(`  Get free testnet LCAI: https://lightfaucet.ai`);
+    if (IN_WEBCONTAINER) {
+      console.error("");
+      console.error("  Hit the faucet's daily cap? Run with a key you already funded:");
+      console.error("    npm start --key 0x<your_funded_testnet_key>");
+    }
+  } else {
+    console.error(`  Top up the address on mainnet (chain ${ln.network.chainId}).`);
+  }
   console.error("");
   process.exit(1);
 }

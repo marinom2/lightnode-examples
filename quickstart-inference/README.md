@@ -15,18 +15,33 @@ npm start
 The first run prints something like this and exits:
 
 ```
-  No PRIVATE_KEY was set, so a fresh testnet key was generated and
-  written to .env. To run this example you need to fund it once:
+  No PRIVATE_KEY was set. A fresh testnet key was generated:
+    Address:     0x1234abcd...
+    Private key: 0x...
 
-    Address: 0x1234abcd...
-    Faucet:  https://lightfaucet.ai
-
-  Then run `npm start` again.
+  To fund and run:
+    1. Open https://lightfaucet.ai
+    2. Paste the address above and request free testnet LCAI
+    3. Run `npm start` again
 ```
 
 Open <https://lightfaucet.ai>, paste the address, request free testnet LCAI,
 then run `npm start` again. This time it fires one real encrypted inference and
 prints the decrypted answer plus three transaction hashes.
+
+### Already have a funded testnet key?
+
+If you already funded a key on a previous run (or in a previous cloud-IDE
+workspace), pass it directly so the example does not generate a new one:
+
+```bash
+npm start --key 0x<your_funded_testnet_key>
+```
+
+This is the recommended path in cloud IDEs like StackBlitz where the workspace
+is ephemeral. The faucet at <https://lightfaucet.ai> is rate-limited (about
+2 LCAI per IP per day), so generating a fresh key in every workspace will
+eventually hit the cap.
 
 For a custom prompt:
 
