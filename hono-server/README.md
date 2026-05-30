@@ -32,6 +32,6 @@ Response:
 }
 ```
 
-Identical contract surface to the Next.js variant — same env vars, same JSON
-shape, same stalled-worker semantics. Use this when you want a small
-standalone microservice rather than coupling inference to a Next.js app.
+Same contract surface as the Next.js variant. Same env vars, same JSON shape,
+same stalled-worker semantics. Use this when you want a small standalone
+microservice instead of coupling inference to a Next.js app.

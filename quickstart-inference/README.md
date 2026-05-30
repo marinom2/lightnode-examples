@@ -1,93 +1,89 @@
 # lightchain-quickstart-inference
 
-A 120-line, dependency-light starter for **end-to-end encrypted inference** on
-LightChain AI using [`lightnode-sdk`](https://www.npmjs.com/package/lightnode-sdk).
-Same code path the [live playground](https://lightnode.app/playground) drives —
-non-custodial, your wallet signs the on-chain calls, the SDK does the rest.
+A tiny starter for **end-to-end encrypted inference** on LightChain AI using
+[`lightnode-sdk`](https://www.npmjs.com/package/lightnode-sdk). Non-custodial:
+your wallet signs the on-chain calls, the SDK does the rest. Same code path the
+[live playground](https://lightnode.app/playground) drives.
 
-## Run it (≈30 seconds)
+## Run it (under a minute)
 
 ```bash
 npm install
-cp .env.example .env
-# Edit .env: set PRIVATE_KEY to a funded testnet wallet
-# (faucet at https://lightfaucet.ai). Testnet inference is free.
+npm start
+```
 
+The first run prints something like this and exits:
+
+```
+  No PRIVATE_KEY was set, so a fresh testnet key was generated and
+  written to .env. To run this example you need to fund it once:
+
+    Address: 0x1234abcd...
+    Faucet:  https://lightfaucet.ai
+
+  Then run `npm start` again.
+```
+
+Open <https://lightfaucet.ai>, paste the address, request free testnet LCAI,
+then run `npm start` again. This time it fires one real encrypted inference and
+prints the decrypted answer plus three transaction hashes.
+
+For a custom prompt:
+
+```bash
 npm start "What is the colour of the sky?"
 ```
 
-Expected output:
-
-```
-▶ network=testnet chainId=8200 wallet=0x...
-✓ authenticated
-✓ prepared. worker=0x... fee=0.02 LCAI
-✓ createSession tx=0x...
-✓ sessionId=...
-✓ relay WebSocket open
-✓ submitJob tx=0x...
-✓ jobId=...
-
-=== ANSWER ===
-The sky appears blue because of how molecules in the atmosphere scatter
-shorter (blue) wavelengths of sunlight more than longer ones...
-
-createSession: 0x...
-submitJob:     0x...
-jobCompleted:  0x...
-```
-
-For mainnet:
+For mainnet (real LCAI):
 
 ```bash
 NETWORK=mainnet npm start "your prompt"
 ```
 
-Cost: ~0.022 LCAI per call on mainnet (0.02 worker fee + a tiny bit of gas).
-Free on testnet.
+Cost on mainnet: about 0.022 LCAI per call (0.02 worker fee plus a tiny bit
+of gas). Free on testnet.
 
 ## What the example does
 
+Under the hood, `runInferenceWithKey` from the SDK runs nine steps:
+
 | Step | What |
 | --- | --- |
-| 1 | SIWE handshake against the consumer gateway → JWT |
-| 2 | `prepareSession` from the SDK (worker assignment + ECDH-P256 session-key wrap + dispatcher signature) |
-| 3 | `createSession` on-chain (signed by your wallet, no LCAI value) |
-| 4 | Open the relay WebSocket BEFORE submitting the job |
-| 5 | `submitPrompt` from the SDK (AES-GCM-encrypts + uploads to the gateway as a blob) |
-| 6 | `submitJob` on-chain, paying the per-call fee in LCAI |
-| 7 | Decrypt each relay frame as it streams in with the session key |
-| 8 | Wait for the on-chain `JobCompleted` commit (90s cap), then print the answer |
+| 1 | SIWE handshake against the consumer gateway (sign challenge, get JWT). |
+| 2 | ECDH-P256 handshake with the gateway, derive a session key. |
+| 3 | AES-GCM encrypt your prompt. Workers never see plaintext. |
+| 4 | `prepareSession`: pick a worker, wrap the session key, get dispatcher signature. |
+| 5 | `createSession` on chain (signed by your wallet, no LCAI value). |
+| 6 | Open the relay WebSocket. |
+| 7 | `submitJob` on chain, paying the per-call fee in LCAI. |
+| 8 | Decrypt each relay frame as it streams in. |
+| 9 | Wait for the on-chain `JobCompleted` commit (the third proof). |
+
+Before `lightnode-sdk@0.4.3` you wrote all of that yourself, around 100 lines
+of viem + crypto + WebSocket glue. Now: 5 lines.
 
 ## Files
 
 | File | What |
 | --- | --- |
-| `index.ts` | The full end-to-end flow. Read top to bottom. |
+| `index.ts` | The full flow. Read top to bottom. |
 | `package.json` | Three runtime deps: `lightnode-sdk`, `viem`, `ws`. |
 | `tsconfig.json` | Node ESM with `tsx`. |
-| `.env.example` | The one secret you need: a funded `PRIVATE_KEY`. |
+| `.env.example` | A funded `PRIVATE_KEY`. Auto-generated on first run if missing. |
 
 ## Where this fits
 
-- **SDK source + docs**: <https://github.com/marinom2/lightnode/tree/main/sdk>
-- **npm package**: <https://www.npmjs.com/package/lightnode-sdk>
-- **Live playground (browser, wallet-connect)**: <https://lightnode.app/playground>
-- **Builder hub**: <https://lightnode.app/build>
-- **Inspect the LightChain contracts in the IDE (Remix fork)**:
-  <https://github.com/lightchain-protocol/lcai-ide>
+- npm package: <https://www.npmjs.com/package/lightnode-sdk>
+- SDK source: <https://github.com/marinom2/lightnode/tree/main/sdk>
+- Live playground (browser, wallet-connect): <https://lightnode.app/playground>
+- Builder hub: <https://lightnode.app/build>
 
 ## Stalled-worker handling
 
-A small percentage of workers acknowledge a job and never produce a result. The
-example caps the wait at 90 seconds and exits with a non-zero status if the
-worker stalled; the protocol times the worker out after the dispute window and
-refunds the fee to your wallet automatically. Re-run to be assigned a different
-worker.
-
-If you want automatic in-process retry, look at the playground's source for the
-pattern: [app/playground/page.tsx](https://github.com/marinom2/lightnode/blob/main/app/playground/page.tsx)
-in the main repo (`StalledWorkerError` + the surrounding retry loop).
+A small percentage of workers acknowledge a job and never produce a result.
+`runInferenceWithKey` retries automatically (up to 2 retries by default, so 3
+paid attempts total), each on a different worker. The protocol times out
+stalled workers after the dispute window and refunds the fee to your wallet.
 
 ## License
 

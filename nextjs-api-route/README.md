@@ -1,8 +1,8 @@
 # Next.js API route: encrypted LightChain AI inference
 
-Drop-in **App Router** API route that exposes one encrypted inference per
+A drop-in **App Router** API route that exposes one encrypted inference per
 request. POST a prompt, get back the decrypted answer plus the three on-chain
-tx hashes. Wallet stays server-side.
+transaction hashes. The wallet stays on the server.
 
 ## Install
 
@@ -38,24 +38,23 @@ console.log(r.txs); // { createSession, submitJob, jobCompleted }
 
 ## What the route does
 
-1. Validates input + reads `PRIVATE_KEY` from env.
-2. SIWE handshake against the consumer gateway → JWT.
-3. `prepareSession` (worker assignment + ECDH-P256 session-key wrap).
-4. Signs `createSession` on-chain with the server-side wallet.
-5. Opens the relay WebSocket and listens for chunk/complete frames.
-6. AES-GCM-encrypts the prompt and uploads to `/api/blobs`.
-7. Signs `submitJob` on-chain, paying the per-call fee.
-8. Polls for `JobCompleted` (90s cap), decrypts each frame as it arrives.
+1. Validates input and reads `PRIVATE_KEY` from env.
+2. SIWE handshake against the consumer gateway, gets a JWT.
+3. `prepareSession` (worker assignment plus ECDH-P256 session-key wrap).
+4. Signs `createSession` on chain with the server-side wallet.
+5. Opens the relay WebSocket and listens for chunk and complete frames.
+6. AES-GCM encrypts the prompt and uploads to `/api/blobs`.
+7. Signs `submitJob` on chain, paying the per-call fee.
+8. Polls for `JobCompleted`, decrypts each frame as it arrives.
 9. Returns `{ answer, txs, sessionId, jobId, worker }` as JSON.
 
 ## Notes
 
-- **Runtime is Node, not Edge** (`viem` + `ws` need it).
-- **maxDuration is 120s** so the route can wait for the worker.
-- **Wallet stays on the server** — your prompt and answer pass through the
+- Runtime is Node, not Edge (`viem` and `ws` need it).
+- `maxDuration` is 120s so the route can wait for the worker.
+- The wallet stays on the server. The prompt and answer pass through the
   function, but the funded private key never reaches the browser.
-- **Stalled workers** return HTTP 504 with the partial tx hashes; the
-  protocol refunds the fee after the dispute window. Re-run to pick a
-  different worker.
+- Stalled workers return HTTP 504 with the partial tx hashes. The protocol
+  refunds the fee after the dispute window. Re-run to pick a different worker.
 - For client-side wallet signing (user pays per call), see the in-browser
   [playground](https://lightnode.app/playground).

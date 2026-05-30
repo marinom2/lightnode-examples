@@ -4,17 +4,20 @@ Runnable, copy-pasteable LightChain AI inference examples built on the
 [`lightnode-sdk`](https://www.npmjs.com/package/lightnode-sdk).
 
 This repo is **deliberately tiny** so cloud IDEs (StackBlitz, Codespaces) can
-clone it in seconds. The SDK itself lives in
-[marinom2/lightnode](https://github.com/marinom2/lightnode) along with the
-worker app + the live network playground.
+clone it in seconds. The SDK source and the rest of the project live in
+[marinom2/lightnode](https://github.com/marinom2/lightnode).
 
-## Examples
+## Pick the example that matches your project
 
-| Folder | What it is | Runnable as-is? |
-|---|---|---|
-| [`quickstart-inference/`](./quickstart-inference) | One-shot encrypted prompt → answer. ~30 lines using `runInferenceWithKey`. Auto-bootstraps a testnet key on first run. | **Yes.** `npm install && npm start`. Also: [Open in StackBlitz](https://stackblitz.com/github/marinom2/lightnode-examples/tree/main/quickstart-inference). |
-| [`nextjs-api-route/`](./nextjs-api-route) | Next.js App Router API route. Drop `route.ts` into `app/api/inference/route.ts` of your own Next.js app. | Snippet (copy into your existing app). |
-| [`hono-server/`](./hono-server) | Hono server. Drop `server.ts` into a Cloudflare Worker / Bun / Node project. | Snippet (copy into your existing app). |
+| If you have... | Open this | What you get |
+| --- | --- | --- |
+| A blank terminal and you just want to feel the SDK work | [`quickstart-inference/`](./quickstart-inference) | A 30-line Node script. Auto-generates a testnet key on first run and tells you where to fund it. |
+| A Next.js app (App Router) and want a server-side AI endpoint | [`nextjs-api-route/`](./nextjs-api-route) | Drop `route.ts` into `app/api/inference/route.ts`, POST a prompt, get a JSON answer back. Wallet stays on the server. |
+| Any other Node project (Cloudflare Workers, Bun, a CLI, a Discord bot, an AWS Lambda) | [`hono-server/`](./hono-server) | A Hono server with the same JSON contract as the Next.js route. Deploys anywhere Hono runs. |
+
+If your project is none of those, the quickstart is the cleanest reference. The
+main flow is one call (`runInferenceWithKey`), the rest of the file is just
+boilerplate around it.
 
 ## Quickstart
 
@@ -25,19 +28,19 @@ npm install
 npm start
 ```
 
-On the first run, `quickstart-inference` generates a fresh testnet key and
-writes it to `.env`, then prints the funded-address-+-faucet URL. Send the
-address some free testnet LCAI at <https://lightfaucet.ai>, then `npm start`
-again to fire one real encrypted inference.
+The first `npm start` generates a fresh testnet key, writes it to `.env`,
+prints the funded-address-plus-faucet flow, and exits. Send the address some
+free testnet LCAI at <https://lightfaucet.ai>, then `npm start` again to run
+one real encrypted inference.
 
 ## Get LCAI
 
-- **Testnet** (free): <https://lightfaucet.ai>
-- **Mainnet** (real LCAI): bridge from Ethereum at <https://bridge.lightchain.ai>
+- Testnet (free): <https://lightfaucet.ai>
+- Mainnet (real LCAI): bridge from Ethereum at <https://bridge.lightchain.ai>
 
 ## Docs
 
-- Full SDK + API surface: <https://github.com/marinom2/lightnode/tree/main/sdk>
+- Full SDK and API surface: <https://github.com/marinom2/lightnode/tree/main/sdk>
 - Live in-browser playground: <https://lightnode.app/playground>
 - Builder hub: <https://lightnode.app/build>
 
