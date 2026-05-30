@@ -12,10 +12,12 @@
  * playground at https://lightnode.app/playground.
  */
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
-import WS from "ws";
 import { createPublicClient, http, parseEther } from "viem";
 import { privateKeyToAccount, generatePrivateKey } from "viem/accounts";
 import { runInferenceWithKey, isStalledWorker, LightNode, SDK_VERSION, type NetworkId } from "lightnode-sdk";
+// The SDK auto-resolves `ws` in Node when no WebSocket is passed in (since
+// v0.4.9). Keep `ws` as a hard dep so the resolve never fails; the import
+// of WS is no longer required in user code.
 
 const NETWORK = (process.env.NETWORK ?? "testnet") as NetworkId;
 const MODEL = process.env.MODEL ?? "llama3-8b";
@@ -142,7 +144,6 @@ try {
     privateKey: PRIVATE_KEY as `0x${string}`,
     prompt: PROMPT,
     model: MODEL,
-    WebSocket: WS, // omit this whole line in the browser
     onChunk: (chunk) => process.stdout.write(chunk),
   });
   process.stdout.write("\n\n");
