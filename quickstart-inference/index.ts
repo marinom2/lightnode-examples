@@ -14,7 +14,7 @@ import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import WS from "ws";
 import { createPublicClient, http, parseEther } from "viem";
 import { privateKeyToAccount, generatePrivateKey } from "viem/accounts";
-import { runInferenceWithKey, isStalledWorker, LightNode, type NetworkId } from "lightnode-sdk";
+import { runInferenceWithKey, isStalledWorker, LightNode, SDK_VERSION, type NetworkId } from "lightnode-sdk";
 
 const NETWORK = (process.env.NETWORK ?? "testnet") as NetworkId;
 const MODEL = process.env.MODEL ?? "llama3-8b";
@@ -61,7 +61,7 @@ const ln = new LightNode(NETWORK);
 const account = privateKeyToAccount(PRIVATE_KEY as `0x${string}`);
 const pub = createPublicClient({ transport: http(ln.network.rpc) });
 const balance = await pub.getBalance({ address: account.address });
-console.log(`▶ ${NETWORK} ${account.address} balance=${Number(balance) / 1e18} LCAI`);
+console.log(`> lightnode-sdk v${SDK_VERSION} network=${NETWORK} ${account.address} balance=${Number(balance) / 1e18} LCAI`);
 if (balance < parseEther("0.05")) {
   console.error("");
   console.error(`  Wallet ${account.address} has too little LCAI to run one job (need ~0.05).`);
